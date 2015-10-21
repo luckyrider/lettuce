@@ -41,7 +41,7 @@ class REP(object):
     "RegEx Pattern"
     first_of = re.compile(ur'^first_of_')
     last_of = re.compile(ur'^last_of_')
-    language = re.compile(u"language:[ ]*([^\s]+)")
+    language = re.compile(u"\s*#\s*language:[ ]*([^\s]+)")
     within_double_quotes = re.compile(r'("[^"]+")')
     within_single_quotes = re.compile(r"('[^']+')")
     only_whitespace = re.compile('^\s*$')
@@ -143,7 +143,7 @@ class StepDefinition(object):
         try:
             ret = self.function(self.step, *args, **kw)
             self.step.passed = True
-        except Exception, e:
+        except Exception as e:
             self.step.failed = True
             self.step.why = ReasonToFail(self.step, e)
             raise
@@ -357,9 +357,9 @@ class Step(object):
 
     def _get_match(self, ignore_case):
         matched, func = None, lambda: None
-
-        for regex, func in STEP_REGISTRY.items():
-            matched = re.search(regex, self.sentence, ignore_case and re.I or 0)
+        for step, func in STEP_REGISTRY.items():
+            regex = STEP_REGISTRY.get_regex(step, ignore_case)
+            matched = regex.search(self.sentence)
             if matched:
                 break
 
@@ -479,10 +479,10 @@ class Step(object):
                     step.run(ignore_case)
                     steps_passed.append(step)
 
-            except NoDefinitionFound, e:
+            except NoDefinitionFound as e:
                 steps_undefined.append(e.step)
 
-            except Exception, e:
+            except Exception as e:
                 steps_failed.append(step)
                 reasons_to_fail.append(step.why)
                 if failfast:
@@ -885,7 +885,7 @@ class Background(object):
             call_hook('before_each', 'step', step)
             try:
                 results.append(step.run(ignore_case))
-            except Exception, e:
+            except Exception as e:
                 print e
                 pass
 
@@ -1047,7 +1047,7 @@ class Feature(object):
         if not language:
             language = Language()
 
-        found = len(re.findall(r'(?:%s):[ ]*\w+' % language.feature, "\n".join(lines), re.U))
+        found = len(re.findall(r'^[ \t]*(?:%s):[ ]*\w+' % language.feature, "\n".join(lines), re.U + re.M))
 
         if found > 1:
             raise LettuceSyntaxError(with_file,
@@ -1058,7 +1058,7 @@ class Feature(object):
                 'Features must have a name. e.g: "Feature: This is my name"')
 
         while lines:
-            matched = re.search(r'(?:%s):(.*)' % language.feature, lines[0], re.I)
+            matched = re.search(r'^[ \t]*(?:%s):(.*)' % language.feature, lines[0], re.I)
             if matched:
                 name = matched.groups()[0].strip()
                 break
@@ -1354,4 +1354,3 @@ class SummaryTotalResults(TotalResult):
                     self._proposed_definitions.extend(scenario_result.steps_undefined)
                     if len(scenario_result.steps_failed) > 0:
                         self.failed_scenario_locations.append(scenario_result.scenario.represented())
-

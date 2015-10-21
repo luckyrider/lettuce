@@ -35,11 +35,15 @@ try:
     from django.core.servers.basehttp import AdminMediaHandler
 except ImportError:
     AdminMediaHandler = None
-try:
-    from django.contrib.staticfiles.handlers import StaticFilesHandler
-except ImportError:
+    
+if 'django.contrib.staticfiles' in settings.INSTALLED_APPS:
+    try:
+        from django.contrib.staticfiles.handlers import StaticFilesHandler
+    except ImportError:
+        StaticFilesHandler = None
+else:
     StaticFilesHandler = None
-
+    
 try:
     from django.utils.six.moves import socketserver
 except ImportError:
@@ -324,11 +328,15 @@ class DefaultServer(BaseServer):
 
 
 try:
-    from django.test.testcases import LiveServerTestCase
+    try:
+        from django.contrib.staticfiles.testing import \
+            StaticLiveServerTestCase as LiveServerTestCase
+    except ImportError:
+        from django.test.testcases import LiveServerTestCase
 
     class DjangoServer(BaseServer):
         """
-        A sever that uses Django's LiveServerTestCase to implement the Server class.
+        A server that uses Django's LiveServerTestCase to implement the Server class.
         """
 
         _server = None
